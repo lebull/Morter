@@ -6,11 +6,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 
 public class ProcessHandler extends Thread{
+	/**
+	 *Spawns and manipulates a separate subprocess.
+	 *
+	 */
 
 	public boolean running = false;
 	
@@ -18,26 +25,25 @@ public class ProcessHandler extends Thread{
 	
 	private static final Logger LOGGER = Logger.getLogger(ProcessHandler.class.getName());
 	
-	/*
-	public ProcessHandler(){
-		
-	}
-	*/
+	private BufferedWriter stdinWriter;
+	
+	private BufferedReader stdoutReader; //Reads stdout
 	
 	public void run(){
 		
 		running = true;
 		
-		ProcessBuilder pb = new ProcessBuilder("ping", "www.google.com", "-n", "3");
+		ProcessBuilder pb = new ProcessBuilder("C:/Python27/python.exe");
 		
-		System.out.println("Run echo command");
-		Process target_process;
 		try {
+			
 			target_process = pb.start();
 			
+			stdoutReader = new BufferedReader(new InputStreamReader(target_process.getInputStream()));
+			stdinWriter = new BufferedWriter(new OutputStreamWriter(target_process.getOutputStream()));
+			
 			while(running){
-				//System.out.println("Tick");
-				showOutput(target_process);
+				dumpOutput();
 				TimeUnit.MILLISECONDS.sleep(100);
 			}
 			
@@ -60,36 +66,40 @@ public class ProcessHandler extends Thread{
 		
 	}
 	
-	private void showOutput(Process target_process) throws IOException {
-		InputStream inputStream = target_process.getInputStream();
+	private void dumpOutput() throws IOException {
+		/**
+		 * @param target_process
+		 */
+		
 		StringBuilder sb = new StringBuilder();
-		BufferedReader br = null;
 		
 		try{
-			br = new BufferedReader(new InputStreamReader(inputStream));
 			String line = null;
-			//while ((line = br.readLine()) != null && br.) {
+			//while () != null && stdoutReader.) {
 			//TODO read the output by the number of chars available.
-			while (/*bleh*/)
+			while (stdoutReader.ready() && (line = stdoutReader.readLine()) != null){
 				sb.append(line + System.getProperty("line.separator"));
 			}
-		} catch (IOException e1) {
-			//Process isn't alive and we tried to read
+		} catch (IOException e1) {	//Process isn't alive and we tried to read
 			//Make sure the thread is stopped, not just the subprocess
-			this.stopThread();
+			this.close();
 			return;
-		} finally {
-			System.out.println("Closed");
-			br.close();
 		}
 		
-
-		
-		System.out.println(sb.toString());
+		System.out.print(sb.toString());
 	}
 	
-	public void stopThread(){
+	public void write(String input) throws IOException{
+		System.out.println(input);
+		stdinWriter.write(input);
+		stdinWriter.flush();
+	}
+	
+	public void close() throws IOException{
+		System.out.println("Process Closed");
 		running = false;
+		stdoutReader.close();
+		stdinWriter.close();
 	}
 	
 	
